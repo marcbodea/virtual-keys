@@ -2,10 +2,16 @@
 <html>
   <body>
     <script type="text/javascript">
-      const hassUrl = window.location.protocol + '//' + window.location.host;
-      const access_token = new URLSearchParams(window.location.search).get('token');
-      localStorage.setItem('hassTokens', JSON.stringify({ access_token: access_token, hassUrl: hassUrl }));
-      window.location.href = hassUrl;
+      const hassUrl = window.location.protocol + "//" + window.location.host;
+      const access_token = new URLSearchParams(window.location.search).get(
+        "token"
+      );
+      localStorage.setItem(
+        "hassTokens",
+        JSON.stringify({ access_token: access_token, hassUrl: hassUrl })
+      );
+      const dash = new URLSearchParams(window.location.search).get("dash");
+      window.location.href = hassUrl + "/" + dash;
     </script>
   </body>
 </html>
