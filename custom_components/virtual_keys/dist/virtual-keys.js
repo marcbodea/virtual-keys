@@ -6,14 +6,16 @@ import {
 
 function humanSeconds(seconds) {
   return [
-    [Math.floor(seconds / 31536000), 'year'],
-    [Math.floor((seconds % 31536000) / 86400), 'day'],
-    [Math.floor(((seconds % 31536000) % 86400) / 3600), 'hour'],
-    [Math.floor((((seconds % 31536000) % 86400) % 3600) / 60), 'minute'],
-    [(((seconds % 31536000) % 86400) % 3600) % 60, 'second'],
-  ].map(([value, label]) => {
-    return value > 0 ? `${value} ${label}${value !== 1 ? 's' : ''} ` : '';
-  }).join(' ');
+    [Math.floor(seconds / 31536000), "year"],
+    [Math.floor((seconds % 31536000) / 86400), "day"],
+    [Math.floor(((seconds % 31536000) % 86400) / 3600), "hour"],
+    [Math.floor((((seconds % 31536000) % 86400) % 3600) / 60), "minute"],
+    [(((seconds % 31536000) % 86400) % 3600) % 60, "second"],
+  ]
+    .map(([value, label]) => {
+      return value > 0 ? `${value} ${label}${value !== 1 ? "s" : ""} ` : "";
+    })
+    .join(" ");
 }
 
 function humanDate(seconds) {
@@ -39,42 +41,49 @@ class VirtualKeysPanel extends LitElement {
     super();
     this.users = [];
     this.tokens = [];
-
+    this.dashboard = "dashboard-guest"; // Default dashboard
     // form inputs
-    this.name = '';
-    this.user = '';
+    this.name = "";
+    this.user = "";
     this.useExpireMinutes = true;
     this.expireMinutes = 60;
-    this.expireDate = '';
+    this.expireDate = "";
     this.expireMinutesChanged({ target: { value: this.expireMinutes } });
   }
 
   fetchUsers() {
-    this.hass.callWS({ type: 'virtual_keys/list_users' }).then(users => {
+    this.hass.callWS({ type: "virtual_keys/list_users" }).then((users) => {
       this.users = [];
       this.tokens = [];
-      users.filter(user => !user.system_generated && user.is_active).forEach(user => {
-        this.users.push({
-          id: user.id,
-          name: user.name,
-        });
-        user.tokens.filter(token => token.type === 'long_lived_access_token' && token.expiration !== 315360000)
-          .forEach(token => {
-            this.tokens.push({
-              id: token.id,
-              name: token.name,
-              user: user.name,
-              jwt_token: token.jwt_token,
-              expiration: token.expiration,
-              remaining: token.remaining,
-            });
+      users
+        .filter((user) => !user.system_generated && user.is_active)
+        .forEach((user) => {
+          this.users.push({
+            id: user.id,
+            name: user.name,
           });
-      });
+          user.tokens
+            .filter(
+              (token) =>
+                token.type === "long_lived_access_token" &&
+                token.expiration !== 315360000
+            )
+            .forEach((token) => {
+              this.tokens.push({
+                id: token.id,
+                name: token.name,
+                user: user.name,
+                jwt_token: token.jwt_token,
+                expiration: token.expiration,
+                remaining: token.remaining,
+              });
+            });
+        });
     });
   }
 
   update(changedProperties) {
-    if (changedProperties.has('hass') && this.hass) {
+    if (changedProperties.has("hass") && this.hass) {
       this.fetchUsers();
     }
     super.update(changedProperties);
@@ -88,15 +97,23 @@ class VirtualKeysPanel extends LitElement {
     this.name = e.target.value;
   }
 
+  dashboardChanged(e) {
+    this.dashboard = e.target.value;
+  }
+
   expireMinutesChanged(e) {
     this.expireMinutes = e.target.value;
-    const date = new Date((new Date().getTime()) + parseInt(this.expireMinutes, 10) * 60000);
-    this.expireDate = date.toLocaleString('sv');
+    const date = new Date(
+      new Date().getTime() + parseInt(this.expireMinutes, 10) * 60000
+    );
+    this.expireDate = date.toLocaleString("sv");
   }
 
   expireDateChanged(e) {
-    const diffInMins = Math.round((new Date(e.detail.value) - new Date()) / 60000);
-    this.expireMinutes = Math.max(0, diffInMins)  + '';
+    const diffInMins = Math.round(
+      (new Date(e.detail.value) - new Date()) / 60000
+    );
+    this.expireMinutes = Math.max(0, diffInMins) + "";
     this.expireDate = e.detail.value;
   }
 
@@ -105,31 +122,35 @@ class VirtualKeysPanel extends LitElement {
   }
 
   toggleSideBar() {
-    this.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true}));
+    this.dispatchEvent(
+      new Event("hass-toggle-menu", { bubbles: true, composed: true })
+    );
   }
 
   validate() {
     if (!this.name) {
-      this.showAlert('Name is required');
+      this.showAlert("Name is required");
       return false;
     }
     if (!this.user) {
-      this.showAlert('User is required');
+      this.showAlert("User is required");
       return false;
     }
     if (this.useExpireMinutes && !this.expireMinutes) {
-      this.showAlert('Expire minutes is required');
+      this.showAlert("Expire minutes is required");
       return false;
     }
     if (!this.useExpireMinutes && !this.expireDate) {
-      this.showAlert('Expire date is required');
+      this.showAlert("Expire date is required");
       return false;
     }
     if (parseInt(this.expireMinutes, 10) < 1) {
-      this.showAlert(this.useExpireMinutes
-        ? 'Expire minutes must be greater than 0'
-        : 'Expire date must be in the future');
-      return false
+      this.showAlert(
+        this.useExpireMinutes
+          ? "Expire minutes must be greater than 0"
+          : "Expire date must be in the future"
+      );
+      return false;
     }
     return true;
   }
@@ -139,26 +160,44 @@ class VirtualKeysPanel extends LitElement {
       return;
     }
 
-    this.hass.callWS({
-      type: 'virtual_keys/create_token',
-      name: this.name,
-      user_id: this.user,
-      minutes: parseInt(this.expireMinutes, 10),
-    }).then(() => {
-      this.fetchUsers();
-    }).catch(err => {
-      this.showAlert(err.message);
-    });
+    this.hass
+      .callWS({
+        type: "virtual_keys/create_token",
+        name: this.name,
+        user_id: this.user,
+        minutes: parseInt(this.expireMinutes, 10),
+      })
+      .then(() => {
+        this.fetchUsers();
+      })
+      .catch((err) => {
+        this.showAlert(err.message);
+      });
   }
 
   deleteButton() {
-    return html`<svg preserveAspectRatio="xMidYMid meet" focusable="false" role="img" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
-        <g><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></g>
-      </svg>`;
+    return html`<svg
+      preserveAspectRatio="xMidYMid meet"
+      focusable="false"
+      role="img"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+    >
+      <g>
+        <path
+          d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+        ></path>
+      </g>
+    </svg>`;
   }
 
   showAlert(message) {
-    const event = new Event('hass-notification', { bubbles: true, composed: true});
+    const event = new Event("hass-notification", {
+      bubbles: true,
+      composed: true,
+    });
     event.detail = { message };
     this.dispatchEvent(event);
   }
@@ -166,23 +205,32 @@ class VirtualKeysPanel extends LitElement {
   deleteClick(e, token) {
     e.stopPropagation();
 
-    this.hass.callWS({
-      type: 'virtual_keys/delete_token',
-      token_id: token.id,
-    }).then(() => {
-      this.fetchUsers();
-    }).catch(err => {
-      this.showAlert(err.message);
-    });
+    this.hass
+      .callWS({
+        type: "virtual_keys/delete_token",
+        token_id: token.id,
+      })
+      .then(() => {
+        this.fetchUsers();
+      })
+      .catch((err) => {
+        this.showAlert(err.message);
+      });
   }
 
   getLoginUrl(token) {
-    return this.hass.hassUrl() + 'local/community/virtual-keys/login.html?token=' + token.jwt_token;
+    return (
+      this.hass.hassUrl() +
+      "local/community/virtual-keys/login.html?token=" +
+      token.jwt_token +
+      "&dash=" +
+      this.dashboard
+    );
   }
 
   listItemClick(e, token) {
     navigator.clipboard.writeText(this.getLoginUrl(token));
-    this.showAlert('Copied to clipboard ' + token.name);
+    this.showAlert("Copied to clipboard " + token.name);
   }
 
   render() {
@@ -190,20 +238,39 @@ class VirtualKeysPanel extends LitElement {
       <div>
         <header class="mdc-top-app-bar mdc-top-app-bar--fixed">
           <div class="mdc-top-app-bar__row">
-            <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start" id="navigation">
+            <section
+              class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start"
+              id="navigation"
+            >
               <div>
-                <mwc-icon-button title="Sidebar Toggle" @click=${this.toggleSideBar}>
-                  <svg preserveAspectRatio="xMidYMid meet" focusable="false" role="img" aria-hidden="true" viewBox="0 0 24 24">
-                    <g><path class="primary-path" d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"></path></g>
+                <mwc-icon-button
+                  title="Sidebar Toggle"
+                  @click=${this.toggleSideBar}
+                >
+                  <svg
+                    preserveAspectRatio="xMidYMid meet"
+                    focusable="false"
+                    role="img"
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                  >
+                    <g>
+                      <path
+                        class="primary-path"
+                        d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"
+                      ></path>
+                    </g>
                   </svg>
                 </mwc-icon-button>
               </div>
 
-              <span class="mdc-top-app-bar__title">
-                ${this.panel.title}
-              </span>
+              <span class="mdc-top-app-bar__title"> ${this.panel.title} </span>
             </section>
-            <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end" id="actions" role="toolbar">
+            <section
+              class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end"
+              id="actions"
+              role="toolbar"
+            >
               <slot name="actionItems"></slot>
             </section>
           </div>
@@ -220,61 +287,73 @@ class VirtualKeysPanel extends LitElement {
 
             <ha-combo-box
               .items=${this.users}
-              .itemLabelPath=${'name'}
-              .itemValuePath=${'id'}
+              .itemLabelPath=${"name"}
+              .itemValuePath=${"id"}
               .value="1"
               label="User"
               .required=${true}
               @value-changed=${this.userChanged}
             >
             </ha-combo-box>
-
-            <ha-button
-              @click=${this.toggleExpire}
-              size="small"
-            >
-              ${this.useExpireMinutes ? 'Use date' : 'Use minutes'}
+            <ha-textfield
+              label="Dashboard"
+              .value=${this.dashboard}
+              @input=${this.dashboardChanged}
+            ></ha-textfield>
+            <ha-button @click=${this.toggleExpire} size="small">
+              ${this.useExpireMinutes ? "Use date" : "Use minutes"}
             </ha-button>
 
             ${this.useExpireMinutes
-            ? html`
-            <ha-textfield
-              label="Expire (minutes)"
-              .type="number"
-              .value="${this.expireMinutes}"
-              @input="${this.expireMinutesChanged}"
-            ></ha-textfield>
-            `
-            : html`
-            <ha-selector
-              .selector=${{
-                datetime: {},
-              }}
-              .value=${this.expireDate}
-              label="Expire on"
-              .hass=${this.hass}
-              .required=${false}
-              @value-changed=${this.expireDateChanged}
-            >
-            </ha-selector>
-            `}
+              ? html`
+                  <ha-textfield
+                    label="Expire (minutes)"
+                    .type="number"
+                    .value="${this.expireMinutes}"
+                    @input="${this.expireMinutesChanged}"
+                  ></ha-textfield>
+                `
+              : html`
+                  <ha-selector
+                    .selector=${{
+                      datetime: {},
+                    }}
+                    .value=${this.expireDate}
+                    label="Expire on"
+                    .hass=${this.hass}
+                    .required=${false}
+                    @value-changed=${this.expireDateChanged}
+                  >
+                  </ha-selector>
+                `}
 
             <ha-button @click=${this.addClick} size="small">Add</ha-button>
           </div>
 
           <ha-card>
             <mwc-list>
-              ${this.tokens.map(token => html`
-                <mwc-list-item hasMeta twoline @click=${e => this.listItemClick(e, token)}>
-                  <a href="${this.getLoginUrl(token)}">${token.name}</a>
-                  <span slot="secondary">${token.user}, ${
-                    this.useExpireMinutes
-                    ? `Expire in: ${humanSeconds(token.remaining)}`
-                    : `Expire on: ${humanDate(token.remaining)}`
-                  }</span>
-                  <mwc-icon slot="meta" @click=${e => this.deleteClick(e, token)}>${this.deleteButton()}</mwc-icon>
-                </mwc-list-item>
-              `)}
+              ${this.tokens.map(
+                (token) => html`
+                  <mwc-list-item
+                    hasMeta
+                    twoline
+                    @click=${(e) => this.listItemClick(e, token)}
+                  >
+                    <a href="${this.getLoginUrl(token)}">${token.name}</a>
+                    <span slot="secondary"
+                      >${token.user},
+                      ${this.useExpireMinutes
+                        ? `Expire in: ${humanSeconds(token.remaining)}`
+                        : `Expire on: ${humanDate(token.remaining)}`}</span
+                    >
+                    <mwc-icon
+                      slot="meta"
+                      @click=${(e) => this.deleteClick(e, token)}
+                      >${this.deleteButton()}</mwc-icon
+                    >
+                  </mwc-list-item>
+                `
+              )}
             </mwc-list>
           </ha-card>
         </div>
@@ -288,9 +367,12 @@ class VirtualKeysPanel extends LitElement {
       }
       .mdc-top-app-bar {
         --mdc-typography-headline6-font-weight: 400;
-        color: var(--app-header-text-color,var(--mdc-theme-on-primary,#fff));
-        background-color: var(--app-header-background-color,var(--mdc-theme-primary));
-        width: var(--mdc-top-app-bar-width,100%);
+        color: var(--app-header-text-color, var(--mdc-theme-on-primary, #fff));
+        background-color: var(
+          --app-header-background-color,
+          var(--mdc-theme-primary)
+        );
+        width: var(--mdc-top-app-bar-width, 100%);
         display: flex;
         position: fixed;
         flex-direction: column;
@@ -328,13 +410,22 @@ class VirtualKeysPanel extends LitElement {
       }
       .mdc-top-app-bar__title {
         -webkit-font-smoothing: antialiased;
-        font-family: var(--mdc-typography-headline6-font-family,var(--mdc-typography-font-family,Roboto,sans-serif));
-        font-size: var(--mdc-typography-headline6-font-size,1.25rem);
-        line-height: var(--mdc-typography-headline6-line-height,2rem);
-        font-weight: var(--mdc-typography-headline6-font-weight,500);
-        letter-spacing: var(--mdc-typography-headline6-letter-spacing,.0125em);
-        text-decoration: var(--mdc-typography-headline6-text-decoration,inherit);
-        text-transform: var(--mdc-typography-headline6-text-transform,inherit);
+        font-family: var(
+          --mdc-typography-headline6-font-family,
+          var(--mdc-typography-font-family, Roboto, sans-serif)
+        );
+        font-size: var(--mdc-typography-headline6-font-size, 1.25rem);
+        line-height: var(--mdc-typography-headline6-line-height, 2rem);
+        font-weight: var(--mdc-typography-headline6-font-weight, 500);
+        letter-spacing: var(
+          --mdc-typography-headline6-letter-spacing,
+          0.0125em
+        );
+        text-decoration: var(
+          --mdc-typography-headline6-text-decoration,
+          inherit
+        );
+        text-transform: var(--mdc-typography-headline6-text-transform, inherit);
         padding-left: 20px;
         padding-right: 0px;
         text-overflow: ellipsis;
@@ -352,7 +443,7 @@ class VirtualKeysPanel extends LitElement {
         height: var(--header-height);
       }
       app-toolbar [main-title] {
-        margin-left: 20px
+        margin-left: 20px;
       }
       ha-combo-box {
         padding: 8px 0;
@@ -387,4 +478,4 @@ class VirtualKeysPanel extends LitElement {
   }
 }
 
-customElements.define('virtual-keys', VirtualKeysPanel);
+customElements.define("virtual-keys", VirtualKeysPanel);
