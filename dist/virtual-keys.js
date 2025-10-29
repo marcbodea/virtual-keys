@@ -300,7 +300,7 @@ class VirtualKeysPanel extends LitElement {
             >
             </ha-selector>
 
-            <mwc-button raised label="Add" @click=${this.addClick}></mwc-button>
+            <ha-button @click=${this.addClick} size="small">Add</ha-button>
           </div>
 
           ${this.alert.length
