@@ -33,6 +33,7 @@ class VirtualKeysPanel extends LitElement {
       panel: { type: Object },
       users: { type: Array },
       tokens: { type: Array },
+      user: { type: String },
       useExpireMinutes: { type: Boolean },
     };
   }
@@ -303,7 +304,12 @@ class VirtualKeysPanel extends LitElement {
               @selected=${this.userChanged}
             >
               ${this.users.map(user => html`
-                <ha-list-item .value="${user.id}">${user.name}</ha-list-item>
+                <ha-list-item
+                  .value="${user.id}"
+                  ?selected=${`${user.id}` === `${this.user}`}
+                >
+                  ${user.name}
+                </ha-list-item>
               `)}
             </ha-select>
 
