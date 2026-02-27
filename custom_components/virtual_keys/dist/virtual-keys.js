@@ -53,16 +53,15 @@ class VirtualKeysPanel extends LitElement {
 
   fetchUsers() {
     this.hass.callWS({ type: "virtual_keys/list_users" }).then((users) => {
-      const filteredUsers = users
+      this.users = [];
+      this.tokens = [];
+      users
         .filter((user) => !user.system_generated && user.is_active)
-        .map((user) => ({
-          id: user.id,
-          name: user.name,
-          tokens: user.tokens,
-        }));
-
-      const tokens = [];
-      filteredUsers.forEach((user) => {
+        .forEach((user) => {
+          this.users.push({
+            id: user.id,
+            name: user.name,
+          });
         user.tokens
           .filter(
             (token) =>
@@ -70,7 +69,7 @@ class VirtualKeysPanel extends LitElement {
               token.expiration !== 315360000
           )
           .forEach((token) => {
-            tokens.push({
+              this.tokens.push({
               id: token.id,
               name: token.name,
               user: user.name,
@@ -81,11 +80,15 @@ class VirtualKeysPanel extends LitElement {
           });
       });
 
-      this.users = filteredUsers.map(({ id, name }) => ({ id, name }));
-      this.tokens = tokens;
-
-      if (this.users.length > 0 && !this.users.some((u) => `${u.id}` === `${this.user}`)) {
-        this.user = `${this.users[0].id}`;
+      if (!this.users.some((u) => `${u.id}` === `${this.user}`)) {
+        const guestUser = this.users.find(
+          (u) => u.name && u.name.toLowerCase() === "guest"
+        );
+        this.user = guestUser
+          ? `${guestUser.id}`
+          : this.users.length > 0
+            ? `${this.users[0].id}`
+            : "";
       }
     });
   }
@@ -98,7 +101,7 @@ class VirtualKeysPanel extends LitElement {
   }
 
   userChanged(e) {
-    this.user = `${e?.target?.value ?? e?.detail?.value ?? ""}`;
+    this.user = e.target.value;
   }
 
   nameChanged(e) {
@@ -454,11 +457,9 @@ class VirtualKeysPanel extends LitElement {
       app-toolbar [main-title] {
         margin-left: 20px;
       }
-      ha-combo-box,
-      ha-select {
+      ha-combo-box {
         padding: 8px 0;
         width: auto;
-        min-width: 220px;
       }
       mwc-button {
         padding: 16px 0;
