@@ -7,6 +7,7 @@ from homeassistant.auth.models import TOKEN_TYPE_LONG_LIVED_ACCESS_TOKEN
 from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.util import dt as dt_util
 import os
+import shutil
 import aiofiles
 
 from .const import DOMAIN, TITLE, NAME
@@ -36,11 +37,16 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     if DOMAIN in hass.data.get("frontend_panels", {}):
         frontend.async_remove_panel(hass, DOMAIN)
 
+    module_path = hass.config.path("www", "community", NAME, f"{NAME}.js")
+    cache_bust = ""
+    if os.path.exists(module_path):
+        cache_bust = f"?v={int(os.path.getmtime(module_path))}"
+
     await panel_custom.async_register_panel(
         hass,
         webcomponent_name=NAME,
         frontend_url_path=DOMAIN,
-        module_url=f"/local/community/{NAME}/{NAME}.js",
+        module_url=f"/local/community/{NAME}/{NAME}.js{cache_bust}",
         sidebar_title=TITLE,
         sidebar_icon="mdi:key-variant",
         require_admin=True,
@@ -54,6 +60,12 @@ async def async_unload_entry(hass: HomeAssistant, config_entry):
         frontend.async_remove_panel(hass, DOMAIN)
 
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, config_entry) -> None:
+    """Remove static frontend assets when the config entry is deleted."""
+    dest_dir = hass.config.path("www", "community", NAME)
+    await hass.async_add_executor_job(shutil.rmtree, dest_dir, True)
 
 @websocket_api.websocket_command({vol.Required("type"): "virtual_keys/list_users"})
 @websocket_api.require_admin
