@@ -53,32 +53,40 @@ class VirtualKeysPanel extends LitElement {
 
   fetchUsers() {
     this.hass.callWS({ type: "virtual_keys/list_users" }).then((users) => {
-      this.users = [];
-      this.tokens = [];
-      users
+      const filteredUsers = users
         .filter((user) => !user.system_generated && user.is_active)
-        .forEach((user) => {
-          this.users.push({
-            id: user.id,
-            name: user.name,
-          });
-          user.tokens
-            .filter(
-              (token) =>
-                token.type === "long_lived_access_token" &&
-                token.expiration !== 315360000
-            )
-            .forEach((token) => {
-              this.tokens.push({
-                id: token.id,
-                name: token.name,
-                user: user.name,
-                jwt_token: token.jwt_token,
-                expiration: token.expiration,
-                remaining: token.remaining,
-              });
+        .map((user) => ({
+          id: user.id,
+          name: user.name,
+          tokens: user.tokens,
+        }));
+
+      const tokens = [];
+      filteredUsers.forEach((user) => {
+        user.tokens
+          .filter(
+            (token) =>
+              token.type === "long_lived_access_token" &&
+              token.expiration !== 315360000
+          )
+          .forEach((token) => {
+            tokens.push({
+              id: token.id,
+              name: token.name,
+              user: user.name,
+              jwt_token: token.jwt_token,
+              expiration: token.expiration,
+              remaining: token.remaining,
             });
-        });
+          });
+      });
+
+      this.users = filteredUsers.map(({ id, name }) => ({ id, name }));
+      this.tokens = tokens;
+
+      if (this.users.length > 0 && !this.users.some((u) => `${u.id}` === `${this.user}`)) {
+        this.user = `${this.users[0].id}`;
+      }
     });
   }
 
@@ -90,7 +98,7 @@ class VirtualKeysPanel extends LitElement {
   }
 
   userChanged(e) {
-    this.user = e.target.value
+    this.user = `${e?.target?.value ?? e?.detail?.value ?? ""}`;
   }
 
   nameChanged(e) {
@@ -286,7 +294,7 @@ class VirtualKeysPanel extends LitElement {
             ></ha-textfield>
 
             <ha-select
-              .value="1"
+              .value=${this.user}
               label="User"
               .required=${true}
               @selected=${this.userChanged}
@@ -446,9 +454,11 @@ class VirtualKeysPanel extends LitElement {
       app-toolbar [main-title] {
         margin-left: 20px;
       }
-      ha-combo-box {
+      ha-combo-box,
+      ha-select {
         padding: 8px 0;
         width: auto;
+        min-width: 220px;
       }
       mwc-button {
         padding: 16px 0;
